@@ -8,10 +8,30 @@ export type ScriptPhase =
   | "fight"
   | "unexpected-praise"
   | "final-verdict";
+export type RoastMood = "nervous" | "laughing" | "supportive" | "annoyed" | "sarcastic" | "serious" | "confident" | "neutral";
+export type RoastGesture = "open_hands" | "hands_up" | "pointing" | "arms_crossed" | "chin_touch" | "smirk_pose" | "shrug";
+export type BubbleSide = "left" | "center" | "right";
 
-export interface RoastScript {
-  title: string;
-  repositoryLabel: string;
+export interface SiliconValidScript {
+  title?: string;
+  repositoryLabel?: string;
+  repoSummary?: string;
+  strengths?: string[];
+  weaknesses?: string[];
+  scores?: {
+    architecture: number;
+    codeQuality: number;
+    security: number;
+    documentation: number;
+    scalability: number;
+    developerExperience: number;
+    productClarity: number;
+    overall: number;
+  };
+  finalVerdict?: {
+    label: string;
+    summary: string;
+  };
   cast: {
     id: SpeakerId;
     name: string;
@@ -22,13 +42,18 @@ export interface RoastScript {
     talkingStyle: string;
   }[];
   turns: {
-    phase: ScriptPhase;
+    id?: string;
+    phase?: ScriptPhase;
     speakerId: SpeakerId;
+    speakerName?: string;
     displayText: string;
     fishText: string;
-    evidence: string[];
+    evidence?: string[];
+    mood?: RoastMood;
+    gesture?: RoastGesture;
+    bubbleSide?: BubbleSide;
   }[];
-  verdict: {
+  verdict?: {
     biggestStrength: string;
     biggestProblem: string;
     fixFirst: string;
@@ -36,3 +61,6 @@ export interface RoastScript {
     siliconValidVerdict: string;
   };
 }
+
+// Kept for compatibility with the original Part 2 naming.
+export type RoastScript = SiliconValidScript;

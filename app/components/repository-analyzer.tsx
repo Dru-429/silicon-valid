@@ -2,9 +2,10 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { DEFAULT_ROAST_SCRIPT } from "@/lib/default-roast";
 import type { RepositoryContext } from "@/types/repository";
-import type { RoastScript } from "@/types/script";
-import { RoastStage } from "./roast-stage";
+import type { SiliconValidScript } from "@/types/script";
+import { SiliconValidStage } from "./roast-stage";
 
 type Screen = "form" | "loading" | "result" | "script-loading" | "stage";
 
@@ -66,7 +67,8 @@ export function RepositoryAnalyzer() {
   const [screen, setScreen] = useState<Screen>("form");
   const [repoUrl, setRepoUrl] = useState("");
   const [context, setContext] = useState<RepositoryContext | null>(null);
-  const [script, setScript] = useState<RoastScript | null>(null);
+  const [script, setScript] = useState<SiliconValidScript | null>(null);
+  const [playbackMode, setPlaybackMode] = useState<"generated" | "default">("generated");
   const [error, setError] = useState<string | null>(null);
   const [scriptError, setScriptError] = useState<string | null>(null);
   const [visibleSteps, setVisibleSteps] = useState(1);
@@ -142,12 +144,20 @@ export function RepositoryAnalyzer() {
 
       if (!response.ok) throw new Error(payload.error ?? "The panel refused to take the stage.");
 
-      setScript(payload as RoastScript);
+      setScript(payload as SiliconValidScript);
+      setPlaybackMode("generated");
       setScreen("stage");
     } catch (caught) {
       setScriptError(caught instanceof Error ? caught.message : "The script could not be generated.");
       setScreen("result");
     }
+  }
+
+  function playDefaultRoast() {
+    setScriptError(null);
+    setScript(DEFAULT_ROAST_SCRIPT);
+    setPlaybackMode("default");
+    setScreen("stage");
   }
 
   async function copyJson() {
@@ -164,6 +174,7 @@ export function RepositoryAnalyzer() {
     setRepoUrl("");
     setContext(null);
     setScript(null);
+    setPlaybackMode("generated");
     setError(null);
     setScriptError(null);
     setCopied(false);
@@ -253,6 +264,7 @@ export function RepositoryAnalyzer() {
                     </div>
                     <div className="flex shrink-0 flex-wrap gap-3">
                       <button type="button" onClick={generateScript} className="sketch-button bg-[#d74b42] px-5 py-2 text-sm font-bold text-white">Generate Roast Script -&gt;</button>
+                      <button type="button" onClick={playDefaultRoast} className="sketch-button bg-[#172138] px-5 py-2 text-sm font-bold text-white">&#9654; Play Default Roast</button>
                       <button type="button" onClick={copyJson} className="sketch-button bg-[#f6c453] px-4 py-2 text-sm font-bold text-[#172138]">{copied ? "Copied" : "Copy JSON"}</button>
                       <button type="button" onClick={reset} className="sketch-button bg-[#3769e8] px-4 py-2 text-sm font-bold text-white">Another repo</button>
                     </div>
@@ -264,7 +276,7 @@ export function RepositoryAnalyzer() {
                     </motion.div>
                   )}
                   {script && (
-                    <button type="button" onClick={() => setScreen("stage")} className="mb-3 self-start text-sm font-bold text-[#3769e8] underline decoration-wavy underline-offset-4">Return to generated stage -&gt;</button>
+                    <button type="button" onClick={() => setScreen("stage")} className="mb-3 self-start text-sm font-bold text-[#3769e8] underline decoration-wavy underline-offset-4">Return to stage -&gt;</button>
                   )}
                   <div className="sketch-box min-h-0 flex-1 overflow-hidden bg-[#111a2b] p-1">
                     <pre className="code-scroll h-full max-h-[52dvh] overflow-auto p-4 font-mono text-[11px] leading-relaxed text-[#dce7ff] sm:p-5 sm:text-xs lg:text-sm"><code>{json}</code></pre>
@@ -274,7 +286,7 @@ export function RepositoryAnalyzer() {
 
               {screen === "stage" && script && (
                 <motion.div key="stage" {...screenMotion} className="h-full min-h-0 w-full">
-                  <RoastStage script={script} onBack={() => setScreen("result")} onReset={reset} />
+                  <SiliconValidStage script={script} playbackMode={playbackMode} onBack={() => setScreen("result")} onReset={reset} />
                 </motion.div>
               )}
             </AnimatePresence>
