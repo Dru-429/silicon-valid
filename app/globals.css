@@ -225,8 +225,8 @@ button {
 
 .stage-character {
   position: relative;
-  width: clamp(120px, 10vw, 150px);
-  height: clamp(200px, 16vw, 240px);
+  width: clamp(62px, 10vw, 124px);
+  height: clamp(135px, 27vh, 220px);
   transform-origin: bottom center;
   will-change: transform, opacity;
 }
@@ -388,13 +388,18 @@ button {
 
 .stage-control,
 .stage-icon-button {
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid rgba(23, 33, 56, 0.25);
   border-radius: 7px 10px 8px 9px;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 7px 11px;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 11px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 5px 8px;
+  color: #172138;
+  font-size: 10px;
   font-weight: 800;
+  line-height: 1.2;
   transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
@@ -406,30 +411,38 @@ button {
 
 .stage-control:hover,
 .stage-icon-button:hover {
-  border-color: #ffbd64;
-  background: rgba(255, 189, 100, 0.12);
+  border-color: #3769e8;
+  background: #e8efff;
   transform: translateY(-1px);
 }
 
 .stage-control:focus-visible,
 .stage-icon-button:focus-visible,
 .stage-shell button:focus-visible {
-  outline: 3px dashed #ffbd64;
+  outline: 3px dashed #3769e8;
   outline-offset: 3px;
 }
 
 .stage-control-gold {
-  border-color: #ffbd64;
-  color: #ffce8b;
+  border-color: #e98c24;
+  background: #ffad43;
+  color: #172138;
+}
+
+.stage-control-blue {
+  border-color: #2349ac;
+  background: #3769e8;
+  color: white;
+}
+
+.stage-control-blue:hover {
+  border-color: #172138;
+  background: #2349ac;
 }
 
 @media (max-width: 640px) {
   .speech-bubble {
     padding: 13px 15px;
-  }
-
-  .stage-character {
-    transform: scale(0.85);
   }
 }
 

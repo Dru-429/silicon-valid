@@ -10,8 +10,10 @@ type PlaybackMode = "generated" | "default";
 type RoastStageProps = {
   script: SiliconValidScript;
   playbackMode: PlaybackMode;
+  repositoryUrl: string;
   onBack: () => void;
   onReset: () => void;
+  onGenerateFixPlan: () => void;
   onPlaybackStarted?: () => void;
   onPlaybackFinished?: () => void;
 };
@@ -110,14 +112,14 @@ function localTurnDuration(displayText: string) {
   return Math.max(2200, Math.min(7000, displayText.length * 45));
 }
 
-export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPlaybackStarted, onPlaybackFinished }: RoastStageProps) {
+export function SiliconValidStage({ script, playbackMode, repositoryUrl, onBack, onReset, onGenerateFixPlan, onPlaybackStarted, onPlaybackFinished }: RoastStageProps) {
   const reduceMotion = Boolean(useReducedMotion());
   const audioRef = useRef<HTMLAudioElement>(null);
   const playbackStartedRef = useRef(false);
   const playbackFinishedRef = useRef(false);
   const [turnIndex, setTurnIndex] = useState(0);
   const [playing, setPlaying] = useState(playbackMode === "default");
-  const [showTranscript, setShowTranscript] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(true);
   const [showFinalVerdict, setShowFinalVerdict] = useState(false);
   const [copied, setCopied] = useState(false);
   const [audioState, setAudioState] = useState<AudioState>("idle");
@@ -184,6 +186,21 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPla
     } catch {
       setCopied(false);
     }
+  }
+
+  function downloadTranscript() {
+    const transcript = script.turns
+      .map((item, index) => {
+        const member = script.cast.find((candidate) => candidate.id === item.speakerId);
+        return `${String(index + 1).padStart(2, "0")}. ${member?.name ?? item.speakerName}: ${item.displayText}`;
+      })
+      .join("\n\n");
+    const url = URL.createObjectURL(new Blob([transcript], { type: "text/plain;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${repositoryLabel.replace("/", "-")}-debate-transcript.txt`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   async function generateAudio() {
@@ -315,7 +332,7 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPla
             : "Generate voices";
 
   return (
-    <div className="stage-shell code-scroll h-full min-h-0 w-full overflow-y-auto rounded-[18px] border-[3px] border-[#111827] bg-[#080b18] text-white shadow-[5px_6px_0_#111827]">
+    <div className="stage-shell code-scroll flex h-full min-h-0 w-full flex-col gap-1.5 overflow-y-auto text-[#172138]">
       {playbackMode === "generated" && (
         <audio
           ref={audioRef}
@@ -337,36 +354,44 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPla
         />
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/15 bg-[#0f1529]/95 px-4 py-3 sm:px-5">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[10px] font-bold tracking-[0.2em] text-[#ffb45d] uppercase">Live repository roast</p>
-            <span className="rounded-full border border-[#57d4c4]/40 bg-[#57d4c4]/10 px-2 py-0.5 text-[9px] font-black tracking-wider text-[#7ee9dc] uppercase">
-              {playbackMode === "default" ? "Local fallback · no APIs" : "Audio generation"}
-            </span>
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-[#172138]/25 bg-white/70 px-3 py-2 sm:px-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#172138] text-lg text-white" aria-hidden="true">◉</span>
+          <div className="min-w-0">
+            <h1 className="truncate text-sm font-bold leading-tight sm:text-base">{repositoryLabel}</h1>
+            <p className="truncate text-[10px] text-[#566078]">{repositoryUrl}</p>
           </div>
-          <h1 className="mt-0.5 text-lg font-bold tracking-tight sm:text-2xl">{repositoryLabel}</h1>
+          <span className="hidden h-8 border-l border-[#172138]/25 sm:block" />
+          <div className="hidden items-center gap-2 sm:flex">
+            <span className="size-2 rounded-full bg-red-500" />
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.14em] text-[#d74b42] uppercase">Live repository roast</p>
+              <p className="text-[8px] tracking-[0.15em] text-[#566078] uppercase">
+                {playbackMode === "default" ? "Local stage · no APIs" : "Audio generation"}
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={onBack} className="stage-control">Raw context</button>
-          <button type="button" onClick={copyScript} className="stage-control stage-control-gold">{copied ? "Copied" : "Copy script JSON"}</button>
-          <button type="button" onClick={onReset} className="stage-control">New repo</button>
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" onClick={onBack} className="stage-control">▤ <span className="hidden sm:inline">Raw context</span></button>
+          <button type="button" onClick={copyScript} className="stage-control">{copied ? "Copied" : "{} Copy script JSON"}</button>
+          <button type="button" onClick={onReset} className="stage-control stage-control-blue">＋ <span className="hidden sm:inline">New repo</span></button>
         </div>
-      </div>
+      </header>
 
-      <div className="stage-scene relative min-h-[520px] overflow-hidden sm:min-h-[600px]">
+      <section className="stage-scene relative min-h-[300px] flex-1 overflow-hidden rounded-lg border-2 border-[#172138] sm:min-h-[330px]" aria-label="Debate stage">
         <div className="stage-truss" aria-hidden="true" />
         <div className="spotlight spotlight-left" aria-hidden="true" />
         <div className="spotlight spotlight-right" aria-hidden="true" />
 
-        <div className="absolute top-10 left-1/2 z-10 w-[min(86%,780px)] -translate-x-1/2 text-center sm:top-12">
-          <p className="-rotate-1 text-[10px] font-bold tracking-[0.3em] text-[#ffbc72] uppercase sm:text-xs">
+        <div className="absolute top-2 left-1/2 z-10 w-[min(86%,780px)] -translate-x-1/2 text-center">
+          <p className="-rotate-1 text-[9px] font-bold tracking-[0.25em] text-[#ffbc72] uppercase sm:text-[10px]">
             {turn.phase ? phaseLabels[turn.phase] : "Local stage rehearsal"}
           </p>
-          <div className="stage-logo mt-1 text-4xl font-black tracking-[-0.08em] sm:text-6xl lg:text-7xl">SILICON VALID</div>
+          <div className="stage-logo mt-0.5 text-3xl font-black tracking-[-0.08em] sm:text-5xl lg:text-6xl">SILICON VALID</div>
         </div>
 
-        <div className="absolute top-[135px] left-1/2 z-30 w-[min(88%,760px)] -translate-x-1/2 sm:top-[155px]">
+        <div className="absolute top-[74px] left-1/2 z-30 w-[min(84%,650px)] -translate-x-1/2 sm:top-[82px]">
           <AnimatePresence mode="wait">
             <motion.div
               key={turn.id ?? turnIndex}
@@ -377,15 +402,15 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPla
               className={`speech-bubble bubble-tail-${turn.bubbleSide ?? "center"} text-[#151824]`}
               aria-live="polite"
             >
-              <div className="mb-2 flex items-center justify-between gap-3 border-b-2 border-dashed border-[#192035]/20 pb-2">
-                <p className="text-sm font-black tracking-wide uppercase sm:text-base">{speaker?.name ?? turn.speakerName}</p>
-                <span className="text-[9px] font-bold tracking-[0.14em] text-[#c13b31] uppercase sm:text-[10px]">{speaker?.role}</span>
+              <div className="mb-1 flex items-center justify-between gap-3 border-b border-dashed border-[#192035]/25 pb-1">
+                <p className="text-[10px] font-black tracking-wide uppercase sm:text-xs">{speaker?.name ?? turn.speakerName}</p>
+                <span className="text-[8px] font-bold tracking-[0.1em] text-[#c13b31] uppercase sm:text-[9px]">{speaker?.role}</span>
               </div>
-              <p className="text-base leading-relaxed font-bold sm:text-xl">{turn.displayText}</p>
+              <p className="max-h-[78px] overflow-hidden text-xs leading-snug font-bold sm:text-sm">{turn.displayText}</p>
               {(turn.evidence?.length ?? 0) > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {turn.evidence?.map((item) => (
-                    <span key={item} className="rounded-full border border-[#3769e8]/35 bg-[#e8efff] px-2 py-1 font-mono text-[9px] text-[#28458e] sm:text-[10px]">{item}</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {turn.evidence?.slice(0, 3).map((item) => (
+                    <span key={item} className="rounded-full border border-[#3769e8]/35 bg-[#e8efff] px-1.5 py-0.5 font-mono text-[8px] text-[#28458e]">{item}</span>
                   ))}
                 </div>
               )}
@@ -393,9 +418,9 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPla
           </AnimatePresence>
         </div>
 
-        <div className="stage-floor absolute inset-x-0 bottom-0 z-20 h-[215px] sm:h-[250px]" aria-hidden="true" />
-        <div className="code-scroll absolute inset-x-0 bottom-14 z-30 overflow-x-auto px-3 sm:bottom-16 sm:px-7">
-          <div className="mx-auto grid min-w-[720px] max-w-5xl grid-cols-5 items-end gap-2">
+        <div className="stage-floor absolute inset-x-0 bottom-0 z-20 h-[38%]" aria-hidden="true" />
+        <div className="code-scroll absolute inset-x-0 bottom-8 z-30 overflow-x-auto px-2 sm:bottom-9 sm:px-6">
+          <div className="mx-auto grid min-w-[540px] max-w-5xl grid-cols-5 items-end gap-1 sm:min-w-0 sm:gap-2">
             {cast.map((member) => {
               const active = member.id === turn.speakerId;
               return (
@@ -417,100 +442,57 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPla
                     gesture={active ? turn.gesture : undefined}
                     reduceMotion={reduceMotion}
                   />
-                  <span className={`mt-1 rounded-full border-2 px-2 py-1 text-[9px] font-black tracking-wider uppercase transition sm:text-[10px] ${active ? "border-[#ffca70] bg-[#ff473d] text-white" : "border-white/20 bg-[#11182b]/90 text-white/45"}`}>{member.name.split(" ")[0]}</span>
+                  <span className={`mt-0.5 rounded-full border px-2 py-0.5 text-[8px] font-black tracking-wider uppercase transition sm:text-[9px] ${active ? "border-[#ffca70] bg-[#ff473d] text-white" : "border-white/30 bg-[#11182b]/90 text-white/65"}`}>{member.name.split(" ")[0]}</span>
                 </button>
               );
             })}
           </div>
         </div>
-        <div className="audience-row absolute inset-x-0 bottom-0 z-40 h-20" aria-hidden="true" />
+        <div className="audience-row absolute inset-x-0 bottom-0 z-40 h-10" aria-hidden="true" />
+      </section>
+
+      <div className="flex shrink-0 flex-wrap items-center gap-1.5 rounded-lg border border-[#172138]/20 bg-white/55 px-2 py-1.5 sm:flex-nowrap sm:px-3">
+        <button type="button" onClick={() => moveTurn(-1)} disabled={turnIndex === 0} className="stage-control">◀ Previous</button>
+        <button
+          type="button"
+          onClick={togglePlayback}
+          disabled={audioState === "generating"}
+          className="stage-control stage-control-gold min-w-24 disabled:cursor-wait disabled:opacity-60"
+          aria-pressed={playing}
+        >
+          {playing ? "Ⅱ " : "▶ "}{audioButtonLabel}
+        </button>
+        <button type="button" onClick={() => moveTurn(1)} disabled={turnIndex === script.turns.length - 1} className="stage-control">Next ▶</button>
+        <button type="button" onClick={restart} className="stage-control hidden sm:block">↻ Restart</button>
+        <div className="min-w-24 flex-1 px-1">
+          <div className="h-2 overflow-hidden rounded-full bg-[#172138]/15">
+            <motion.div
+              className="h-full rounded-full bg-[#ff9d37]"
+              animate={{ width: `${playbackMode === "generated" && audioState === "ready" ? audioProgress * 100 : ((turnIndex + 1) / script.turns.length) * 100}%` }}
+            />
+          </div>
+        </div>
+        <span className="shrink-0 font-mono text-[10px] text-[#566078]">{turnIndex + 1} / {script.turns.length}</span>
+        <button type="button" onClick={() => setShowTranscript((current) => !current)} className="stage-control">
+          {showTranscript ? "Transcript ▾" : "Transcript"}
+        </button>
+        {audioUrl && playbackMode === "generated" && (
+          <a href={audioUrl} download={`${repositoryLabel.replace("/", "-")}-roast.mp3`} className="stage-control hidden lg:inline-flex">MP3</a>
+        )}
       </div>
 
-      <AnimatePresence>
-        {showFinalVerdict && (
-          <motion.section
-            initial={{ opacity: 0, y: 18, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mx-4 mt-4 rounded-[18px_22px_17px_24px] border-2 border-[#ffbd64] bg-[#291729] px-5 py-6 text-center shadow-[4px_5px_0_#ff473d] sm:mx-5"
-            aria-live="assertive"
-          >
-            <p className="text-xs font-black tracking-[0.28em] text-[#ffca70] uppercase">Final verdict</p>
-            <p className="mt-2 text-5xl font-black text-white">{score.toFixed(1)} <span className="text-2xl text-white/60">/ 10</span></p>
-            <p className="mt-2 text-xl font-black tracking-[0.16em] text-[#ff756c] uppercase">{verdictLabel}</p>
-            <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed font-bold text-white/90">
-              {playbackMode === "default" ? (
-                <>&ldquo;The fundamentals are there.<br />The architecture needs therapy.&rdquo;</>
-              ) : (
-                verdictSummary
-              )}
-            </p>
-          </motion.section>
-        )}
-      </AnimatePresence>
+      {audioError && (
+        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} role="alert" className="shrink-0 rounded-md border border-[#b9342e]/40 bg-[#fff0ea] px-3 py-1.5 text-xs font-bold text-[#9e2f2a]">
+          <span>{audioError}</span>
+          <button type="button" onClick={() => setAudioError(null)} className="ml-3" aria-label="Dismiss audio error">×</button>
+        </motion.div>
+      )}
 
-      <div className="border-t border-white/15 bg-[#10162a] px-4 py-3 sm:px-5">
-        {audioError && (
-          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-[#ff756c]/60 bg-[#ff473d]/10 px-3 py-2 text-xs font-bold text-[#ffaaa4]">
-            <span>{audioError}</span>
-            <button type="button" onClick={() => setAudioError(null)} aria-label="Dismiss audio error">x</button>
-          </motion.div>
-        )}
-
-        <div className="mb-3 rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-center" aria-live="polite">
-          <span className="mr-2 text-[10px] font-black tracking-wider text-[#ffbd64] uppercase">{speaker?.name ?? turn.speakerName}</span>
-          <span className="text-xs leading-relaxed text-white/80">{turn.displayText}</span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={() => moveTurn(-1)} disabled={turnIndex === 0} className="stage-control disabled:cursor-not-allowed disabled:opacity-35">&#9198; Previous</button>
-          <button
-            type="button"
-            onClick={togglePlayback}
-            disabled={audioState === "generating"}
-            className="stage-control stage-control-gold min-w-32 disabled:cursor-wait disabled:opacity-60"
-            aria-pressed={playing}
-          >
-            {playing ? "⏸ " : "▶ "}{audioButtonLabel}
-          </button>
-          <button type="button" onClick={() => moveTurn(1)} disabled={turnIndex === script.turns.length - 1} className="stage-control disabled:cursor-not-allowed disabled:opacity-35">Next &#9197;</button>
-          <button type="button" onClick={restart} className="stage-control">Restart</button>
-          <div className="min-w-36 flex-1">
-            <div className="h-2 overflow-hidden rounded-full bg-white/10">
-              <motion.div
-                className="h-full bg-[linear-gradient(90deg,#ff473d,#ffbd64)]"
-                animate={{ width: `${playbackMode === "generated" && audioState === "ready" ? audioProgress * 100 : ((turnIndex + 1) / script.turns.length) * 100}%` }}
-              />
-            </div>
-          </div>
-          <span className="font-mono text-xs text-white/60">{turnIndex + 1} / {script.turns.length}</span>
-          {audioUrl && playbackMode === "generated" && (
-            <a href={audioUrl} download={`${repositoryLabel.replace("/", "-")}-roast.mp3`} className="stage-control">Download MP3</a>
-          )}
-          <button type="button" onClick={() => setShowTranscript((current) => !current)} className="stage-control">{showTranscript ? "Hide transcript" : "Transcript"}</button>
-        </div>
-
-        <p className="mt-2 text-[10px] leading-relaxed text-white/45">
-          {playbackMode === "default" && "Local rehearsal mode: timing, subtitles, gestures and turn changes run entirely in your browser."}
-          {playbackMode === "generated" && audioState === "idle" && "Generate voices makes one five-speaker audio generation call and uses audio generation credits."}
-          {playbackMode === "generated" && audioState === "generating" && "Directing five voices in one performance. Longer scripts can take a minute."}
-          {playbackMode === "generated" && audioState === "ready" && "Voice playback is ready. The visible turn follows the generated performance."}
-          {playbackMode === "generated" && audioState === "error" && "No credits are spent by retrying until audio generation accepts the request."}
-        </p>
-
-        <details className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/70">
-          <summary className="cursor-pointer font-bold tracking-wider text-[#ffca70] uppercase">Performance direction</summary>
-          <p className="mt-2 font-mono leading-relaxed">{turn.fishText}</p>
-        </details>
-
-        <AnimatePresence>
-          {showTranscript && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="code-scroll mt-3 max-h-64 space-y-2 overflow-y-auto border-t border-white/10 pt-3"
-            >
+      <div className="grid min-h-[110px] shrink-0 gap-1.5 lg:min-h-[126px] lg:flex-1 lg:grid-cols-[1.65fr_1fr]">
+        {showTranscript && (
+          <section className="code-scroll min-h-[110px] overflow-y-auto rounded-lg border border-[#172138]/20 bg-white/55 px-2 py-1.5 lg:min-h-0" aria-label="Debate transcript">
+            <h2 className="mb-1 flex items-center gap-2 px-1 text-sm font-bold"><span>Transcript</span><span className="text-xs text-[#f29121]">✳</span></h2>
+            <div className="space-y-0.5">
               {script.turns.map((item, index) => {
                 const member = script.cast.find((candidate) => candidate.id === item.speakerId);
                 return (
@@ -518,29 +500,64 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPla
                     key={item.id ?? `${item.speakerId}-${index}`}
                     type="button"
                     onClick={() => seekToTurn(index)}
-                    className={`block w-full rounded-lg border px-3 py-2 text-left transition ${index === turnIndex ? "border-[#ffbd64] bg-[#ffbd64]/10" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"}`}
+                    className={`grid w-full grid-cols-[76px_1fr] gap-2 rounded px-2 py-1 text-left text-[10px] leading-tight transition sm:grid-cols-[92px_1fr] ${index === turnIndex ? "bg-[#dce7ff] text-[#172138]" : "text-[#566078] hover:bg-white/80"}`}
                   >
-                    <span className="mr-2 text-[10px] font-black tracking-wider text-[#ff7a61] uppercase">{member?.name ?? item.speakerName}</span>
-                    <span className="text-xs leading-relaxed text-white/75">{item.displayText}</span>
+                    <span className="truncate font-bold tracking-wide text-[#3769e8] uppercase">{member?.name ?? item.speakerName}</span>
+                    <span className="line-clamp-2">{item.displayText}</span>
                   </button>
                 );
               })}
-              <div className="rounded-xl border-2 border-[#ffbd64]/50 bg-[#ffbd64]/10 p-4">
-                <p className="text-xs font-black tracking-[0.18em] text-[#ffca70] uppercase">Final board notes - {score.toFixed(1)}/10</p>
-                <p className="mt-2 text-xs leading-relaxed text-white/75">{verdictSummary}</p>
-                {script.verdict && (
-                  <div className="mt-2 grid gap-2 text-xs leading-relaxed text-white/75 sm:grid-cols-2">
-                    <p><strong className="text-white">Strength:</strong> {script.verdict.biggestStrength}</p>
-                    <p><strong className="text-white">Problem:</strong> {script.verdict.biggestProblem}</p>
-                    <p><strong className="text-white">Fix first:</strong> {script.verdict.fixFirst}</p>
-                    <p><strong className="text-white">Verdict:</strong> {script.verdict.siliconValidVerdict}</p>
-                  </div>
-                )}
+            </div>
+            {showFinalVerdict && (
+              <div className="mt-2 border-t border-[#172138]/15 px-2 pt-2 text-xs" aria-live="assertive">
+                <strong>{verdictLabel} · {score.toFixed(1)}/10</strong> — {verdictSummary}
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+          </section>
+        )}
+
+        <section className="min-h-[110px] rounded-lg border border-[#172138]/20 bg-white/55 px-3 py-2 lg:min-h-0" aria-label="Performance direction">
+          <h2 className="mb-1 text-sm font-bold">▰ Performance Direction</h2>
+          <div className="grid gap-1 text-[10px] leading-tight sm:grid-cols-3 lg:grid-cols-1">
+            <p><strong className="mr-2 text-[#f29121]">● Tone</strong>{turn.mood?.replaceAll("-", " ") ?? "thoughtful and measured"}</p>
+            <p><strong className="mr-2 text-[#3769e8]">● Body language</strong>{turn.gesture?.replaceAll("_", " ") ?? "open hands, calm posture"}</p>
+            <p><strong className="mr-2 text-[#873cf5]">● Stage focus</strong>{speaker?.name ?? turn.speakerName} · {turn.phase ? phaseLabels[turn.phase] : "Center stage"}</p>
+          </div>
+          <details className="mt-1 border-t border-dashed border-[#172138]/15 pt-1 text-[9px]">
+            <summary className="cursor-pointer font-bold text-[#566078]">Full direction</summary>
+            <p className="mt-1 max-h-16 overflow-y-auto font-mono leading-relaxed text-[#566078]">{turn.fishText}</p>
+          </details>
+        </section>
       </div>
+
+      <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-[#172138]/15 bg-white/60 px-2 py-1.5 sm:px-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg text-[#3769e8]" aria-hidden="true">♧</span>
+          <div>
+            <p className="text-xs font-bold text-[#3769e8]">What&apos;s next?</p>
+            <p className="hidden text-[9px] text-[#566078] sm:block">Turn insights from this debate into action.</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" onClick={onGenerateFixPlan} className="stage-control stage-control-blue">⚒ Generate parallel fix plan</button>
+          <button type="button" onClick={downloadTranscript} className="stage-control">▤ Export transcript</button>
+          <a href={repositoryUrl} target="_blank" rel="noreferrer" className="stage-control">◉ Open in GitHub</a>
+        </div>
+      </footer>
+
+      {showFinalVerdict && (
+        <AnimatePresence>
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="shrink-0 rounded-lg border border-[#d74b42]/40 bg-[#fff0ea] px-4 py-2 text-center text-xs"
+            aria-live="assertive"
+          >
+            <strong className="text-[#d74b42]">{verdictLabel} · {score.toFixed(1)} / 10</strong>
+            <span className="ml-2">{playbackMode === "default" ? "The fundamentals are there. The architecture needs therapy." : verdictSummary}</span>
+          </motion.section>
+        </AnimatePresence>
+      )}
     </div>
   );
 }

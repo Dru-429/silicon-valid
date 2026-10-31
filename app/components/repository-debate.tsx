@@ -361,8 +361,10 @@ export function RepositoryDebate({ repoUrl }: { repoUrl: string }) {
             <SiliconValidStage
               script={script}
               playbackMode={playbackMode}
+              repositoryUrl={context?.repository.url ?? repoUrl}
               onBack={() => setScreen("result")}
               onReset={goHome}
+              onGenerateFixPlan={() => void startFixAnalysis()}
               onPlaybackStarted={() => void startFixAnalysis()}
               onPlaybackFinished={() => setDebateFinished(true)}
             />
@@ -399,4 +401,3 @@ export function RepositoryDebate({ repoUrl }: { repoUrl: string }) {
     </SiliconShell>
   );
 }
-
