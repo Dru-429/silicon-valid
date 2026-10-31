@@ -12,6 +12,8 @@ type RoastStageProps = {
   playbackMode: PlaybackMode;
   onBack: () => void;
   onReset: () => void;
+  onPlaybackStarted?: () => void;
+  onPlaybackFinished?: () => void;
 };
 
 type AudioState = "idle" | "generating" | "ready" | "error";
@@ -108,9 +110,11 @@ function localTurnDuration(displayText: string) {
   return Math.max(2200, Math.min(7000, displayText.length * 45));
 }
 
-export function SiliconValidStage({ script, playbackMode, onBack, onReset }: RoastStageProps) {
+export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPlaybackStarted, onPlaybackFinished }: RoastStageProps) {
   const reduceMotion = Boolean(useReducedMotion());
   const audioRef = useRef<HTMLAudioElement>(null);
+  const playbackStartedRef = useRef(false);
+  const playbackFinishedRef = useRef(false);
   const [turnIndex, setTurnIndex] = useState(0);
   const [playing, setPlaying] = useState(playbackMode === "default");
   const [showTranscript, setShowTranscript] = useState(false);
@@ -142,19 +146,29 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset }: Roa
   const verdictSummary = script.finalVerdict?.summary ?? script.verdict?.fixFirst ?? "The fundamentals are there. The architecture needs therapy.";
 
   useEffect(() => {
+    if (!playing || playbackStartedRef.current) return;
+    playbackStartedRef.current = true;
+    onPlaybackStarted?.();
+  }, [onPlaybackStarted, playing]);
+
+  useEffect(() => {
     if (playbackMode !== "default" || !playing || showFinalVerdict) return;
 
     const timer = window.setTimeout(() => {
       if (turnIndex === script.turns.length - 1) {
         setPlaying(false);
         setShowFinalVerdict(true);
+        if (!playbackFinishedRef.current) {
+          playbackFinishedRef.current = true;
+          onPlaybackFinished?.();
+        }
         return;
       }
       setTurnIndex((current) => current + 1);
     }, localTurnDuration(turn.displayText));
 
     return () => window.clearTimeout(timer);
-  }, [playbackMode, playing, script.turns.length, showFinalVerdict, turn.displayText, turnIndex]);
+  }, [onPlaybackFinished, playbackMode, playing, script.turns.length, showFinalVerdict, turn.displayText, turnIndex]);
 
   useEffect(() => {
     return () => {
@@ -315,6 +329,10 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset }: Roa
             setAudioProgress(1);
             setTurnIndex(script.turns.length - 1);
             setShowFinalVerdict(true);
+            if (!playbackFinishedRef.current) {
+              playbackFinishedRef.current = true;
+              onPlaybackFinished?.();
+            }
           }}
         />
       )}

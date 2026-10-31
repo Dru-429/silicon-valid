@@ -2,15 +2,27 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_ROAST_SCRIPT } from "@/lib/default-roast";
+import { saveFixAnalysisResult } from "@/lib/fix-analysis-storage";
 import { clearRepositoryContextCache, fetchRepositoryContext } from "@/lib/repository-client";
+import type { FixAnalysisEvent, FixCategory } from "@/types/fix-analysis";
 import type { RepositoryContext } from "@/types/repository";
 import type { SiliconValidScript } from "@/types/script";
+import { AnalysisProgressToast } from "./analysis-progress-toast";
 import { SiliconValidStage } from "./roast-stage";
 import { SiliconShell } from "./silicon-shell";
 
 type Screen = "loading" | "error" | "result" | "script-loading" | "stage";
+type FixAnalysisStatus = "idle" | "running" | "complete" | "error";
+
+const analysisCategoryLabels: Record<FixCategory, string> = {
+  security: "Security",
+  backend: "Backend",
+  frontend: "Frontend",
+  "code-quality": "Code quality",
+  scalability: "Architecture",
+};
 
 const repositoryLoadingSteps = [
   "GitHub Repo URL",
@@ -67,8 +79,43 @@ export function RepositoryDebate({ repoUrl }: { repoUrl: string }) {
   const [scriptVisibleSteps, setScriptVisibleSteps] = useState(1);
   const [copied, setCopied] = useState(false);
   const [repositoryAttempt, setRepositoryAttempt] = useState(0);
+  const [fixAnalysisStatus, setFixAnalysisStatus] = useState<FixAnalysisStatus>("idle");
+  const [fixAnalysisId, setFixAnalysisId] = useState<string | null>(null);
+  const [fixAnalysisError, setFixAnalysisError] = useState<string | null>(null);
+  const [debateFinished, setDebateFinished] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const analysisStartedRef = useRef(false);
+  const toastQueueRef = useRef<string[]>([]);
+  const toastTimerRef = useRef<number | null>(null);
+  const toastGapTimerRef = useRef<number | null>(null);
 
   const json = useMemo(() => (context ? JSON.stringify(context, null, 2) : ""), [context]);
+
+  const pumpToast = useCallback(function showNextToast() {
+    if (toastTimerRef.current !== null || !toastQueueRef.current.length) return;
+    const nextMessage = toastQueueRef.current.shift() ?? null;
+    setToastMessage(nextMessage);
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+      toastGapTimerRef.current = window.setTimeout(() => {
+        toastGapTimerRef.current = null;
+        showNextToast();
+      }, 140);
+    }, 1500);
+  }, []);
+
+  const queueToast = useCallback((message: string) => {
+    toastQueueRef.current.push(message);
+    pumpToast();
+  }, [pumpToast]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
+      if (toastGapTimerRef.current !== null) window.clearTimeout(toastGapTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     let isCurrentAttempt = true;
@@ -103,6 +150,72 @@ export function RepositoryDebate({ repoUrl }: { repoUrl: string }) {
     const timer = window.setTimeout(() => setScriptVisibleSteps((current) => current + 1), 650);
     return () => window.clearTimeout(timer);
   }, [screen, scriptVisibleSteps]);
+
+  const startFixAnalysis = useCallback(async () => {
+    if (!context || analysisStartedRef.current) return;
+
+    analysisStartedRef.current = true;
+    const analysisId = crypto.randomUUID();
+    setFixAnalysisId(analysisId);
+    setFixAnalysisStatus("running");
+    setFixAnalysisError(null);
+
+    try {
+      const response = await fetch("/api/fix-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" },
+        body: JSON.stringify({ analysisId, repositoryContext: context }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "We couldn't complete the repository review.");
+      }
+      if (!response.body) throw new Error("The repository review stream was unavailable.");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let receivedResult = false;
+
+      const consumeEvent = (event: FixAnalysisEvent) => {
+        if (event.type === "file-read") queueToast(`Read ${event.file}`);
+        if (event.type === "analysis-complete") queueToast(`${analysisCategoryLabels[event.category]} review complete`);
+        if (event.type === "analysis-unavailable") queueToast(`${analysisCategoryLabels[event.category]} review unavailable`);
+        if (event.type === "finalizing") queueToast("Consolidating repository fixes");
+        if (event.type === "error") throw new Error(event.message);
+        if (event.type === "complete") {
+          saveFixAnalysisResult(event.result);
+          setFixAnalysisId(event.result.analysisId);
+          setFixAnalysisStatus("complete");
+          receivedResult = true;
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (line.trim()) consumeEvent(JSON.parse(line) as FixAnalysisEvent);
+        }
+        if (done) break;
+      }
+
+      if (buffer.trim()) consumeEvent(JSON.parse(buffer) as FixAnalysisEvent);
+      if (!receivedResult) throw new Error("We couldn't complete the repository review.");
+    } catch (caught) {
+      setFixAnalysisStatus("error");
+      setFixAnalysisError(caught instanceof Error ? caught.message : "We couldn't complete the repository review.");
+    }
+  }, [context, queueToast]);
+
+  useEffect(() => {
+    if (debateFinished && fixAnalysisStatus === "complete" && fixAnalysisId) {
+      router.push(`/results?id=${encodeURIComponent(fixAnalysisId)}`);
+    }
+  }, [debateFinished, fixAnalysisId, fixAnalysisStatus, router]);
 
   async function generateScript() {
     if (!context) return;
@@ -162,6 +275,13 @@ export function RepositoryDebate({ repoUrl }: { repoUrl: string }) {
     setError(null);
     setScriptError(null);
     setRepositoryAttempt((current) => current + 1);
+  }
+
+  function retryFixAnalysis() {
+    analysisStartedRef.current = false;
+    setFixAnalysisStatus("idle");
+    setFixAnalysisError(null);
+    void startFixAnalysis();
   }
 
   const isStage = screen === "stage";
@@ -238,7 +358,41 @@ export function RepositoryDebate({ repoUrl }: { repoUrl: string }) {
 
         {screen === "stage" && script && (
           <motion.div key="stage" {...screenMotion} className="h-full min-h-0 w-full">
-            <SiliconValidStage script={script} playbackMode={playbackMode} onBack={() => setScreen("result")} onReset={goHome} />
+            <SiliconValidStage
+              script={script}
+              playbackMode={playbackMode}
+              onBack={() => setScreen("result")}
+              onReset={goHome}
+              onPlaybackStarted={() => void startFixAnalysis()}
+              onPlaybackFinished={() => setDebateFinished(true)}
+            />
+            <AnalysisProgressToast message={debateFinished && fixAnalysisStatus === "running" ? null : toastMessage} />
+            <AnimatePresence>
+              {debateFinished && fixAnalysisStatus === "running" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="fixed bottom-20 left-1/2 z-[100] -translate-x-1/2 rounded-[10px_13px_9px_12px] border border-[#ffbd64]/45 bg-[#10162a]/94 px-4 py-2 text-xs font-bold text-white/85 shadow-[3px_4px_0_rgba(0,0,0,.35)] backdrop-blur-md"
+                  role="status"
+                >
+                  <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-[#ffbd64]" />
+                  Finalizing repository review...
+                </motion.div>
+              )}
+              {debateFinished && fixAnalysisStatus === "error" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="fixed bottom-16 left-1/2 z-[100] w-[min(92vw,430px)] -translate-x-1/2 rounded-[12px_15px_11px_14px] border border-[#ff756c]/55 bg-[#10162a]/96 px-4 py-3 text-center shadow-[3px_4px_0_rgba(0,0,0,.4)] backdrop-blur-md"
+                  role="alert"
+                >
+                  <p className="text-xs font-bold text-white/85">{fixAnalysisError ?? "We couldn't complete the repository review."}</p>
+                  <button type="button" onClick={retryFixAnalysis} className="stage-control stage-control-gold mt-2">Retry analysis</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
