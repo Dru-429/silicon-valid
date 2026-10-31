@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RoastGesture, SiliconValidScript, SpeakerId, StagePosition } from "@/types/script";
 
@@ -23,12 +24,12 @@ const positionOrder: Record<StagePosition, number> = {
   "far-right": 4,
 };
 
-const characterLook: Record<SpeakerId, { accent: string; hair: string; initials: string; pose: string }> = {
-  dinesh: { accent: "#64325f", hair: "#17131b", initials: "DK", pose: "-rotate-2" },
-  gilfoyle: { accent: "#2c3442", hair: "#2d211e", initials: "BG", pose: "rotate-1" },
-  richard: { accent: "#b52635", hair: "#a85f26", initials: "RH", pose: "-rotate-1" },
-  jared: { accent: "#b67d46", hair: "#37231d", initials: "JD", pose: "rotate-1" },
-  erlich: { accent: "#253552", hair: "#8a542e", initials: "EB", pose: "rotate-2" },
+const characterLook: Record<SpeakerId, { image: string; pose: string; mouthLeft: string; mouthTop: string }> = {
+  dinesh: { image: "/dinesh.png", pose: "-rotate-2", mouthLeft: "49%", mouthTop: "16.5%" },
+  gilfoyle: { image: "/gilfoyle.png", pose: "rotate-1", mouthLeft: "48%", mouthTop: "15.5%" },
+  richard: { image: "/richad.png", pose: "-rotate-1", mouthLeft: "49%", mouthTop: "18.2%" },
+  jared: { image: "/jared.png", pose: "rotate-1", mouthLeft: "51%", mouthTop: "16.1%" },
+  erlich: { image: "/erlich.png", pose: "rotate-2", mouthLeft: "51%", mouthTop: "15.2%" },
 };
 
 const phaseLabels = {
@@ -80,16 +81,20 @@ function CharacterPortrait({
           : { duration: 0.25 }
       }
     >
-      <div className="stage-hair" style={{ background: look.hair }} />
-      <div className="stage-head">
-        <span className="stage-eye" />
-        <span className="stage-eye" />
-        <span className={`stage-mouth ${speaking ? "stage-mouth-talking" : ""}`} />
-      </div>
-      <div className="stage-neck" />
-      <div className="stage-body" style={{ background: look.accent }}>
-        <span>{look.initials}</span>
-      </div>
+      <Image
+        src={look.image}
+        alt=""
+        width={1024}
+        height={1536}
+        sizes="(max-width: 768px) 120px, 150px"
+        loading="eager"
+        className="stage-character-image"
+      />
+      <span
+        aria-hidden="true"
+        className={`stage-image-mouth ${speaking ? "stage-image-mouth-talking" : ""}`}
+        style={{ left: look.mouthLeft, top: look.mouthTop }}
+      />
     </motion.div>
   );
 }

@@ -169,6 +169,7 @@ export function RepositoryDebate({ repoUrl }: { repoUrl: string }) {
   return (
     <SiliconShell
       isStage={isStage}
+      fullscreen
       onLogoClick={goHome}
       backControl={
         <button type="button" onClick={goHome} className="text-xs font-bold text-[#3769e8] underline decoration-wavy underline-offset-4">

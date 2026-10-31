@@ -6,17 +6,18 @@ import Link from "next/link";
 type SiliconShellProps = {
   children: ReactNode;
   isStage?: boolean;
+  fullscreen?: boolean;
   onLogoClick?: () => void;
   backControl?: ReactNode;
 };
 
-export function SiliconShell({ children, isStage = false, onLogoClick, backControl }: SiliconShellProps) {
+export function SiliconShell({ children, isStage = false, fullscreen = false, onLogoClick, backControl }: SiliconShellProps) {
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-[#152038] p-3 sm:p-6 lg:p-8">
+    <main className={`relative w-full overflow-hidden bg-[#152038] ${fullscreen ? "h-dvh p-0" : "min-h-dvh p-3 sm:p-6 lg:p-8"}`}>
       <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/bg.png')" }} aria-hidden="true" />
       <div className="absolute inset-0 bg-[linear-gradient(130deg,rgba(7,15,32,.78),rgba(8,18,38,.68)_45%,rgba(13,20,31,.82))]" aria-hidden="true" />
-      <div className={`relative mx-auto flex min-h-[calc(100dvh-1.5rem)] items-center justify-center sm:min-h-[calc(100dvh-3rem)] lg:min-h-[calc(100dvh-4rem)] ${isStage ? "max-w-[1500px]" : "max-w-6xl"}`}>
-        <section className={`sketch-frame paper-noise flex max-h-[calc(100dvh-1.5rem)] min-h-[580px] w-full flex-col overflow-hidden px-5 py-7 sm:max-h-[calc(100dvh-3rem)] sm:min-h-[650px] sm:px-10 sm:py-9 lg:max-h-[calc(100dvh-4rem)] ${isStage ? "lg:px-7" : "lg:px-14"}`}>
+      <div className={`relative mx-auto flex w-full items-center justify-center ${fullscreen ? "h-dvh max-w-none" : `min-h-[calc(100dvh-1.5rem)] sm:min-h-[calc(100dvh-3rem)] lg:min-h-[calc(100dvh-4rem)] ${isStage ? "max-w-[1500px]" : "max-w-6xl"}`}`}>
+        <section className={`sketch-frame paper-noise flex w-full flex-col overflow-hidden px-5 py-7 sm:px-10 sm:py-9 ${fullscreen ? "h-dvh min-h-0 max-h-dvh" : "max-h-[calc(100dvh-1.5rem)] min-h-[580px] sm:max-h-[calc(100dvh-3rem)] sm:min-h-[650px] lg:max-h-[calc(100dvh-4rem)]"} ${isStage ? "lg:px-7" : "lg:px-14"}`}>
           <header className="relative z-10 flex items-start justify-between gap-5 border-b-2 border-dashed border-[#3769e8]/45 pb-4">
             {onLogoClick ? (
               <button type="button" onClick={onLogoClick} className="group text-left" aria-label="Return to the start">

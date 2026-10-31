@@ -225,10 +225,49 @@ button {
 
 .stage-character {
   position: relative;
-  width: 105px;
-  height: 180px;
+  width: clamp(120px, 10vw, 150px);
+  height: clamp(200px, 16vw, 240px);
   transform-origin: bottom center;
-  filter: drop-shadow(4px 6px 1px rgba(0, 0, 0, 0.5));
+  will-change: transform, opacity;
+}
+
+.stage-character-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(4px 9px 7px rgba(0, 0, 0, 0.58));
+}
+
+.stage-image-mouth {
+  position: absolute;
+  z-index: 5;
+  width: 13px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(63, 18, 25, 0.88);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.stage-image-mouth-talking {
+  opacity: 0.9;
+  animation: stage-image-talk 260ms steps(2, end) infinite;
+}
+
+@keyframes stage-image-talk {
+  0%, 100% {
+    height: 2px;
+    transform: translate(-50%, -50%) scaleX(0.82);
+  }
+
+  50% {
+    height: 8px;
+    transform: translate(-50%, -50%) scaleX(1.06);
+  }
 }
 
 .stage-head {
