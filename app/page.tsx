@@ -1,5 +1,5 @@
-import { RepositoryAnalyzer } from "./components/repository-analyzer";
+import { RepositoryLanding } from "./components/repository-landing";
 
 export default function Home() {
-  return <RepositoryAnalyzer />;
+  return <RepositoryLanding />;
 }

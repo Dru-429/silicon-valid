@@ -1,0 +1,10 @@
+Repository analysis failed: [TypeError: fetch failed] {
+  [cause]: Error: connect EACCES 20.207.73.85:443
+      at ignore-listed frames {
+    errno: -4092,
+    code: 'EACCES',
+    syscall: 'connect',
+    address: '20.207.73.85',
+    port: 443
+  }
+}
