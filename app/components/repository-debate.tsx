@@ -40,7 +40,7 @@ const scriptLoadingSteps = [
   "Seating all five panelists...",
   "Starting the technical autopsy...",
   "Letting Dinesh and Gilfoyle fight...",
-  "Writing Fish Audio directions...",
+  "Writing audio generation directions...",
   "Preparing the final verdict...",
 ];
 

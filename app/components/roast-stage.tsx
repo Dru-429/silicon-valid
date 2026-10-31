@@ -204,11 +204,11 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPla
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error ?? "Fish Audio could not render the performance.");
+        throw new Error(payload?.error ?? "Audio generation could not render the performance.");
       }
 
       const blob = await response.blob();
-      if (!blob.size) throw new Error("Fish Audio returned an empty audio file.");
+      if (!blob.size) throw new Error("Audio generation returned an empty audio file.");
 
       const nextUrl = URL.createObjectURL(blob);
       setAudioUrl(nextUrl);
@@ -218,7 +218,7 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPla
       setShowFinalVerdict(false);
     } catch (caught) {
       setAudioState("error");
-      setAudioError(caught instanceof Error ? caught.message : "Fish Audio could not render the performance.");
+      setAudioError(caught instanceof Error ? caught.message : "Audio generation could not render the performance.");
     }
   }
 
@@ -342,7 +342,7 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPla
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[10px] font-bold tracking-[0.2em] text-[#ffb45d] uppercase">Live repository roast</p>
             <span className="rounded-full border border-[#57d4c4]/40 bg-[#57d4c4]/10 px-2 py-0.5 text-[9px] font-black tracking-wider text-[#7ee9dc] uppercase">
-              {playbackMode === "default" ? "Local fallback · no APIs" : "Fish Audio Drama 3"}
+              {playbackMode === "default" ? "Local fallback · no APIs" : "Audio generation"}
             </span>
           </div>
           <h1 className="mt-0.5 text-lg font-bold tracking-tight sm:text-2xl">{repositoryLabel}</h1>
@@ -492,10 +492,10 @@ export function SiliconValidStage({ script, playbackMode, onBack, onReset, onPla
 
         <p className="mt-2 text-[10px] leading-relaxed text-white/45">
           {playbackMode === "default" && "Local rehearsal mode: timing, subtitles, gestures and turn changes run entirely in your browser."}
-          {playbackMode === "generated" && audioState === "idle" && "Generate voices makes one five-speaker Drama 3 API call and uses Fish Audio credits."}
+          {playbackMode === "generated" && audioState === "idle" && "Generate voices makes one five-speaker audio generation call and uses audio generation credits."}
           {playbackMode === "generated" && audioState === "generating" && "Directing five voices in one performance. Longer scripts can take a minute."}
           {playbackMode === "generated" && audioState === "ready" && "Voice playback is ready. The visible turn follows the generated performance."}
-          {playbackMode === "generated" && audioState === "error" && "No credits are spent by retrying until Fish Audio accepts the request."}
+          {playbackMode === "generated" && audioState === "error" && "No credits are spent by retrying until audio generation accepts the request."}
         </p>
 
         <details className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/70">

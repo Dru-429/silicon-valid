@@ -44,7 +44,7 @@ export function SiliconShell({ children, isStage = false, fullscreen = false, on
 
           <footer className="relative z-10 flex items-center justify-between border-t-2 border-dashed border-[#3769e8]/35 pt-3 text-[10px] font-bold tracking-[0.14em] text-[#667087] uppercase sm:text-xs">
             <span>public GitHub data + structured OpenAI output</span>
-            <span className="rotate-1 text-[#3769e8]">Fish Audio ready text</span>
+            <span className="rotate-1 text-[#3769e8]">Audio generation ready text</span>
           </footer>
         </section>
       </div>

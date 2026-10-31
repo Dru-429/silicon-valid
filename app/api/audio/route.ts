@@ -42,9 +42,9 @@ function parseTurns(value: unknown): AudioTurn[] | null {
 async function fishErrorMessage(response: Response) {
   try {
     const body = (await response.json()) as { message?: string; reason?: string };
-    return body.message || body.reason || "Fish Audio rejected the request.";
+    return body.message || body.reason || "Audio generation rejected the request.";
   } catch {
-    return "Fish Audio rejected the request.";
+    return "Audio generation rejected the request.";
   }
 }
 
@@ -115,10 +115,10 @@ export async function POST(request: Request) {
       return Response.json({ error: "The request body must be valid JSON." }, { status: 400 });
     }
     if (error instanceof Error && error.name === "TimeoutError") {
-      return Response.json({ error: "Fish Audio took too long to render this performance. Try again." }, { status: 504 });
+      return Response.json({ error: "Audio generation took too long to render this performance. Try again." }, { status: 504 });
     }
 
     console.error("Fish Audio generation failed:", error);
-    return Response.json({ error: "The Fish Audio performance could not be generated right now." }, { status: 500 });
+    return Response.json({ error: "The audio performance could not be generated right now." }, { status: 500 });
   }
 }
